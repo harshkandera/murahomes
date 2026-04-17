@@ -1,0 +1,376 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  MessageSquare, Search, Filter, ChevronDown, ChevronUp,
+  Mail, Calendar, Clock, CheckCircle2, XCircle, RefreshCw,
+  Upload, Send, MapPin, Phone, FileText, ExternalLink, Paperclip
+} from 'lucide-react';
+import { toast } from 'sonner';
+import DropZone from '@/components/DropZone/DropZone';
+
+export default function AdminConsultationsPage() {
+  const [consultations, setConsultations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [expandedId, setExpandedId] = useState(null);
+  const [invoiceUrls, setInvoiceUrls] = useState({});
+  const [uploadingId, setUploadingId] = useState(null);
+  const [fileUploadingId, setFileUploadingId] = useState(null);
+  const [sharingId, setSharingId] = useState(null);
+  const fileInputRefs = useRef({});
+
+  useEffect(() => { fetchConsultations(); }, []);
+
+  const fetchConsultations = async () => {
+    try {
+      const res = await fetch('/api/consultations');
+      if (!res.ok) throw new Error('Failed to fetch');
+      setConsultations(await res.json());
+    } catch (error) { console.error('Consultations fetch error:', error); toast.error('Failed to load inquiries'); }
+    finally { setLoading(false); }
+  };
+
+  const updateStatus = async (id, newStatus) => {
+    try {
+      const res = await fetch(`/api/consultations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!res.ok) throw new Error();
+      setConsultations(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+      toast.success(`Status updated to ${newStatus}`);
+    } catch { toast.error('Failed to update status'); }
+  };
+
+  const handleInvoiceUpload = async (id) => {
+    const url = invoiceUrls[id]?.trim();
+    if (!url) { toast.error('Please enter a valid invoice URL'); return; }
+
+    setUploadingId(id);
+    try {
+      const res = await fetch(`/api/consultations/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceUrl: url, sendEmail: false })
+      });
+      if (!res.ok) throw new Error();
+      setConsultations(prev => prev.map(c => c.id === id ? { ...c, invoiceUrl: url } : c));
+      toast.success('Invoice saved successfully');
+    } catch { toast.error('Failed to save invoice');
+    } finally { setUploadingId(null); }
+  };
+
+  const handleInvoiceFileUpload = async (id, file) => {
+    if (!file) return;
+    setFileUploadingId(id);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('folder', 'invoices');
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      setInvoiceUrls(prev => ({ ...prev, [id]: data.url }));
+      // Auto-save to DB
+      await fetch(`/api/consultations/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceUrl: data.url, sendEmail: false })
+      });
+      setConsultations(prev => prev.map(c => c.id === id ? { ...c, invoiceUrl: data.url } : c));
+      toast.success('Invoice uploaded and saved');
+    } catch {
+      toast.error('Failed to upload invoice');
+    } finally {
+      setFileUploadingId(null);
+    }
+  };
+
+  const handleShareInvoice = async (id) => {
+    const c = consultations.find(x => x.id === id);
+    if (!c?.invoiceUrl && !invoiceUrls[id]) { toast.error('Please save an invoice first'); return; }
+
+    setSharingId(id);
+    try {
+      const url = c.invoiceUrl || invoiceUrls[id];
+      const res = await fetch(`/api/consultations/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceUrl: url, sendEmail: true })
+      });
+      if (!res.ok) throw new Error();
+      setConsultations(prev => prev.map(c => c.id === id ? { ...c, invoiceShared: true, status: 'contacted' } : c));
+      toast.success('Invoice sent to customer email!');
+    } catch { toast.error('Failed to send invoice');
+    } finally { setSharingId(null); }
+  };
+
+  const filteredInquiries = consultations.filter(c =>
+    c.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.customerEmail.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusBadge = (status) => {
+    const map = {
+      pending: { cls: 'bg-amber-50 text-amber-600', icon: <Clock size={10} />, label: 'Pending' },
+      contacted: { cls: 'bg-blue-50 text-blue-600', icon: <Mail size={10} />, label: 'Contacted' },
+      completed: { cls: 'bg-emerald-50 text-emerald-600', icon: <CheckCircle2 size={10} />, label: 'Completed' },
+      cancelled: { cls: 'bg-rose-50 text-rose-600', icon: <XCircle size={10} />, label: 'Cancelled' },
+    };
+    const s = map[status] || { cls: 'bg-secondary text-muted-foreground', icon: null, label: status };
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${s.cls}`}>
+        {s.icon} {s.label}
+      </span>
+    );
+  };
+
+  if (loading) return (
+    <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-muted-foreground">
+      <RefreshCw size={36} className="animate-spin" />
+      <p className="tracking-widest uppercase text-xs font-bold">Loading Consultations...</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Header */}
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-8">
+        <div>
+          <h1 className="font-serif text-3xl font-medium text-foreground tracking-tight flex items-center gap-3">
+            <MessageSquare className="text-primary opacity-80" />
+            Client Consultations
+          </h1>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold mt-1">
+            Manage orders and invoice delivery
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
+            <input 
+              type="text" 
+              placeholder="Search clients..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-11 w-64 rounded-xl border border-border bg-white px-10 text-sm focus:border-black focus:outline-none transition-all shadow-sm"
+            />
+          </div>
+          <button className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-white text-muted-foreground hover:bg-secondary transition-all">
+            <Filter size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-2xl border border-border bg-white shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-secondary/10 border-b border-border">
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Client</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Date</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Total</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Invoice</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Status</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground text-right">Expand</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredInquiries.length === 0 ? (
+                <tr><td colSpan="6" className="px-6 py-12 text-center text-muted-foreground italic">No consultations found.</td></tr>
+              ) : (
+                filteredInquiries.map((inquiry) => (
+                  <React.Fragment key={inquiry.id}>
+                    <tr
+                      className={`group hover:bg-secondary/5 transition-all cursor-pointer ${expandedId === inquiry.id ? 'bg-secondary/10' : ''}`}
+                      onClick={() => setExpandedId(expandedId === inquiry.id ? null : inquiry.id)}
+                    >
+                      <td className="px-6 py-5">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{inquiry.customerName}</span>
+                          <span className="text-xs text-muted-foreground">{inquiry.customerEmail}</span>
+                          {inquiry.customerPhone && <span className="text-xs text-muted-foreground">{inquiry.customerPhone}</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className="text-sm text-foreground flex items-center gap-1.5">
+                          <Calendar size={13} className="opacity-40" />
+                          {new Date(inquiry.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <span className="font-serif text-base font-medium">
+                          {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(inquiry.totalPrice)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
+                        {inquiry.invoiceUrl ? (
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${inquiry.invoiceShared ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                              <FileText size={9} /> {inquiry.invoiceShared ? 'Shared' : 'Saved'}
+                            </span>
+                            <a href={inquiry.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                              <ExternalLink size={13} />
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground italic">No invoice</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-5">{getStatusBadge(inquiry.status)}</td>
+                      <td className="px-6 py-5 text-right">
+                        <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground">
+                          {expandedId === inquiry.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* Expanded Row */}
+                    {expandedId === inquiry.id && (
+                      <tr className="bg-secondary/5 border-t border-border animate-in slide-in-from-top-2 duration-300">
+                        <td colSpan="6" className="px-8 py-8">
+                          <div className="grid lg:grid-cols-3 gap-8">
+                            
+                            {/* Items */}
+                            <div className="space-y-3">
+                              <h4 className="text-[10px] font-bold uppercase tracking-widest text-black border-b border-black/20 pb-2">Selected Pieces</h4>
+                              {Array.isArray(inquiry.items) && inquiry.items.map((item, idx) => (
+                                <div key={idx} className="flex gap-3 items-center bg-white p-3 rounded-xl border border-border/50">
+                                  <div className="h-10 w-10 rounded bg-secondary/30 overflow-hidden shrink-0">
+                                    <img src={item.images?.[0]} className="h-full w-full object-cover" alt="" />
+                                  </div>
+                                  <div className="flex-grow min-w-0">
+                                    <p className="text-sm font-medium truncate">{item.name}</p>
+                                    <p className="text-[10px] text-muted-foreground uppercase">{item.brand} | Qty: {item.quantity}</p>
+                                  </div>
+                                  <div className="text-sm font-serif shrink-0">
+                                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(item.price * item.quantity)}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Delivery Info */}
+                            <div className="space-y-3">
+                              <h4 className="text-[10px] font-bold uppercase tracking-widest text-black border-b border-black/20 pb-2">Delivery Info</h4>
+                              <div className="bg-white rounded-xl border border-border/50 p-4 space-y-2 text-sm">
+                                {inquiry.address && (
+                                  <div className="flex gap-2 text-muted-foreground">
+                                    <MapPin size={14} className="mt-0.5 shrink-0 text-primary" />
+                                    <div>
+                                      <p className="text-foreground">{inquiry.address}</p>
+                                      {inquiry.city && <p>{inquiry.city}</p>}
+                                      <p>{inquiry.state}{inquiry.pinCode ? ` — ${inquiry.pinCode}` : ''}</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {inquiry.customerPhone && (
+                                  <div className="flex gap-2 text-muted-foreground items-center">
+                                    <Phone size={14} className="shrink-0 text-primary" />
+                                    <p>{inquiry.customerPhone}</p>
+                                  </div>
+                                )}
+                                {!inquiry.address && !inquiry.customerPhone && (
+                                  <p className="text-muted-foreground italic text-xs">No delivery info provided</p>
+                                )}
+                              </div>
+
+                              {/* Status Controls */}
+                              <h4 className="text-[10px] font-bold uppercase tracking-widest text-black border-b border-black/20 pb-2 mt-4">Update Status</h4>
+                              <div className="grid grid-cols-2 gap-2">
+                                {['pending', 'contacted', 'completed', 'cancelled'].map((s) => (
+                                  <button
+                                    key={s}
+                                    onClick={(e) => { e.stopPropagation(); updateStatus(inquiry.id, s); }}
+                                    className={`px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${
+                                      inquiry.status === s
+                                        ? 'bg-black text-white border-black'
+                                        : 'bg-white text-muted-foreground border-border hover:border-black/40 hover:text-foreground'
+                                    }`}
+                                  >
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Invoice */}
+                            <div className="space-y-3">
+                              <h4 className="text-[10px] font-bold uppercase tracking-widest text-black border-b border-black/20 pb-2">Invoice Management</h4>
+                              
+                              <div className="bg-white rounded-xl border border-border/50 p-4 space-y-3">
+                                {/* File Upload — Drag & Drop */}
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  <DropZone
+                                    onFileDrop={(file) => handleInvoiceFileUpload(inquiry.id, file)}
+                                    accept="image/*,.pdf"
+                                    uploading={fileUploadingId === inquiry.id}
+                                    label="Drop invoice or click to browse"
+                                    sublabel="PDF, PNG, JPG"
+                                    aspectClass="h-20"
+                                  />
+                                </div>
+
+                                <label className="block text-[10px] uppercase tracking-widest text-muted-foreground">Or paste URL (PDF / Drive link)</label>
+                                <input
+                                  type="url"
+                                  placeholder="https://drive.google.com/..."
+                                  value={invoiceUrls[inquiry.id] ?? inquiry.invoiceUrl ?? ''}
+                                  onChange={(e) => { e.stopPropagation(); setInvoiceUrls(prev => ({ ...prev, [inquiry.id]: e.target.value })); }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full h-10 px-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all"
+                                />
+
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleInvoiceUpload(inquiry.id); }}
+                                  disabled={uploadingId === inquiry.id}
+                                  className="w-full h-9 bg-black text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black/80 transition-all disabled:opacity-50"
+                                >
+                                  {uploadingId === inquiry.id ? <RefreshCw size={12} className="animate-spin" /> : <Upload size={12} />}
+                                  Save Invoice URL
+                                </button>
+
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleShareInvoice(inquiry.id); }}
+                                  disabled={sharingId === inquiry.id || (!inquiry.invoiceUrl && !invoiceUrls[inquiry.id])}
+                                  className="w-full h-9 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all disabled:opacity-40"
+                                >
+                                  {sharingId === inquiry.id ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
+                                  Share with Customer
+                                </button>
+
+                                {inquiry.invoiceShared && (
+                                  <p className="text-[10px] text-emerald-600 text-center font-medium flex items-center justify-center gap-1">
+                                    <CheckCircle2 size={11} /> Invoice emailed to customer
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="p-3 rounded-xl bg-secondary/50 border border-border/50">
+                                <a
+                                  href={`mailto:${inquiry.customerEmail}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full h-9 bg-white border border-border rounded-lg text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-center gap-2 hover:border-black hover:text-foreground transition-all"
+                                >
+                                  <Mail size={12} /> Direct Email
+                                </a>
+                              </div>
+                            </div>
+
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}

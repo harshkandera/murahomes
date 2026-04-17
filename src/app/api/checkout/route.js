@@ -1,0 +1,111 @@
+import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
+import nodemailer from 'nodemailer';
+import prisma from '@/lib/prisma';
+
+export async function POST(request) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized. Please sign in to place an order.' }, { status: 401 });
+    }
+
+    const { cart, name, email, phone, address, city, state, pinCode } = await request.json();
+
+    if (!cart || cart.length === 0) {
+      return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
+    }
+    if (!email || !address || !state || !pinCode) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    const savedInquiry = await prisma.consultation.create({
+      data: {
+        customerName: name || 'Valued Client',
+        customerEmail: email,
+        customerPhone: phone || null,
+        address,
+        city: city || null,
+        state,
+        pinCode,
+        totalPrice: cartTotal,
+        items: cart,
+        status: 'pending',
+      }
+    });
+
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      console.warn('Email credentials missing. Consultation saved but email skipped.');
+      return NextResponse.json({ success: true, inquiryId: savedInquiry.id });
+    }
+
+    const emailPort = parseInt(process.env.EMAIL_PORT || '465', 10);
+    const transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || 'mail.privateemail.com',
+      port: isNaN(emailPort) ? 465 : emailPort,
+      secure: true,
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASSWORD },
+    });
+
+    const formatPrice = (price) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(price);
+
+    const emailHtml = `
+      <div style="font-family: 'Times New Roman', Times, serif; color: #1a1a1a; max-width: 620px; margin: 0 auto; background-color: #fcfbf9; border: 1px solid #e5e5e5;">
+        <div style="background-color: #0a0a0a; padding: 36px 40px; text-align: center;">
+          <h1 style="color: #fff; font-size: 22px; font-weight: normal; letter-spacing: 6px; text-transform: uppercase; margin: 0;">MuraHomes</h1>
+          <p style="color: #888; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; margin: 8px 0 0;">Order Confirmation #${savedInquiry.id.slice(-8).toUpperCase()}</p>
+        </div>
+        <div style="padding: 40px;">
+          <p style="font-size: 17px; margin: 0 0 8px;">Dear ${name},</p>
+          <p style="font-size: 14px; line-height: 1.7; color: #555; margin: 0 0 32px;">
+            Thank you for your order. We have received your request and a senior consultant will contact you within 24 hours.
+          </p>
+          <h3 style="font-size: 10px; text-transform: uppercase; letter-spacing: 3px; border-bottom: 1px solid #1a1a1a; padding-bottom: 10px; margin: 0 0 16px;">Your Selection</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <tbody>
+              ${cart.map(item => `
+                <tr style="border-bottom: 1px solid #efefef;">
+                  <td style="padding: 14px 0;">
+                    <strong style="font-size: 15px; font-weight: normal;">${item.name}</strong>
+                    <span style="font-size: 11px; color: #888; display: block; margin-top: 3px;">${item.brand} | Qty: ${item.quantity}</span>
+                  </td>
+                  <td style="padding: 14px 0; text-align: right; font-size: 15px;">${formatPrice(item.price * item.quantity)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div style="text-align: right; border-top: 2px solid #1a1a1a; padding-top: 16px; margin-bottom: 32px;">
+            <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #888; margin: 0 0 4px;">Order Total</p>
+            <p style="font-size: 26px; font-weight: bold; margin: 0;">${formatPrice(cartTotal)}</p>
+          </div>
+          <h3 style="font-size: 10px; text-transform: uppercase; letter-spacing: 3px; border-bottom: 1px solid #e5e5e5; padding-bottom: 10px; margin: 0 0 16px;">Delivery Details</h3>
+          <table style="width: 100%; font-size: 13px; color: #444; margin-bottom: 32px;">
+            <tr><td style="padding: 5px 0; color: #888; width: 120px;">Address</td><td>${address}${city ? ', ' + city : ''}</td></tr>
+            <tr><td style="padding: 5px 0; color: #888;">State</td><td>${state}</td></tr>
+            <tr><td style="padding: 5px 0; color: #888;">PIN / ZIP</td><td>${pinCode}</td></tr>
+            ${phone ? `<tr><td style="padding: 5px 0; color: #888;">Phone</td><td>${phone}</td></tr>` : ''}
+          </table>
+        </div>
+        <div style="background-color: #0a0a0a; color: #888; padding: 24px 40px; text-align: center;">
+          <p style="font-size: 11px; margin: 0; letter-spacing: 2px; text-transform: uppercase; color: #fff;">MuraHomes</p>
+          <p style="font-size: 10px; margin: 6px 0 0; color: #666;">Passeig de Gràcia 55, 08007 Barcelona, Spain</p>
+          <p style="font-size: 10px; margin: 4px 0 0; color: #555;">info@mura-homes.com | +34 627 080 811</p>
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"MuraHomes" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `Order Confirmation #${savedInquiry.id.slice(-8).toUpperCase()} | MuraHomes`,
+      html: emailHtml,
+    });
+
+    return NextResponse.json({ success: true, message: 'Order placed and confirmation sent.', inquiryId: savedInquiry.id });
+  } catch (error) {
+    console.error('Checkout Error:', error);
+    return NextResponse.json({ error: 'System error during checkout' }, { status: 500 });
+  }
+}

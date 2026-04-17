@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  email         String    @unique
+  password      String?
+  firstName     String?
+  lastName      String?
+  phone         String?
+  image         String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Product {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  slug          String    @unique
+  name          String
+  category      String
+  price         Float
+  brand         String
+  description   String
+  dimensions    String?
+  materials     String[]
+  images        String[]
+  thumbnail     String?
+  featured      Boolean   @default(false)
+  status        String    @default("active")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Brand {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  slug          String    @unique
+  name          String
+  description   String
+  logo          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+
+model Appointment {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  email           String
+  phone           String?
+  appointmentDate String
+  message         String?
+  status          String    @default("pending")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Consultation {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  customerName  String
+  customerEmail String
+  customerPhone String?
+  address       String?
+  city          String?
+  state         String?
+  pinCode       String?
+  items         Json
+  totalPrice    Float
+  status        String    @default("pending")
+  invoiceUrl    String?
+  invoiceShared Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+

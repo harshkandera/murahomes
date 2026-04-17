@@ -1,0 +1,119 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
+import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { Trash, ShoppingBag, X, ArrowRight, Minus, Plus, Lock, Shield } from "lucide-react";
+import { toast } from 'sonner';
+import CheckoutModal from '@/components/CheckoutModal/CheckoutModal';
+
+export default function CartDrawer({ open, setOpen }) {
+  const { cart, removeFromCart, updateQuantity, cartTotal, cartCount, clearCart } = useCart();
+  const { isSignedIn } = useAuth();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  const formatPrice = (price) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(price);
+
+  const handleCheckout = () => {
+    if (!isSignedIn) { toast.error('Inicia sesión para realizar un pedido.'); return; }
+    if (cart.length === 0) return;
+    setOpen(false);
+    setCheckoutOpen(true);
+  };
+
+  return (
+    <>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent className="w-full sm:max-w-md bg-white p-0 flex flex-col h-full border-l border-border shadow-2xl">
+          <SheetHeader className="p-6 border-b border-border bg-secondary/10">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="font-serif text-2xl font-medium flex items-center gap-2">
+                <ShoppingBag size={22} className="text-primary" /> Tu Selección
+              </SheetTitle>
+            </div>
+            <SheetDescription className="text-sm font-light uppercase tracking-widest text-muted-foreground mt-1">
+              {cartCount} {cartCount === 1 ? 'Artículo' : 'Artículos'} en la Cesta
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-grow overflow-y-auto px-6 py-4 space-y-6">
+            {cart.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-secondary/50 flex items-center justify-center text-muted-foreground/30">
+                  <ShoppingBag size={32} />
+                </div>
+                <p className="text-muted-foreground font-light italic">Tu cesta está vacía.</p>
+                <button onClick={() => setOpen(false)} className="text-sm font-medium text-primary hover:underline uppercase tracking-wider">Explorar Colecciones</button>
+              </div>
+            ) : (
+              cart.map((item) => (
+                <div key={item.id} className="group relative flex gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-border bg-secondary/50">
+                    <img src={item.images[0]} alt={item.name} className="h-full w-full object-cover" />
+                  </div>
+                  <div className="flex flex-grow flex-col justify-between py-0.5">
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-serif text-base font-medium text-foreground">{item.name}</h4>
+                        <button onClick={() => removeFromCart(item.id)} className="text-muted-foreground hover:text-destructive p-1 transition-colors"><X size={16} /></button>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-light uppercase tracking-tight">{item.brand}</p>
+                    </div>
+                    <div className="flex justify-between items-end">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] bg-secondary px-2 py-0.5 rounded text-primary capitalize font-medium w-fit">{item.status.replace('-', ' ')}</span>
+                        <div className="flex items-center border border-border rounded-md overflow-hidden h-8 w-24">
+                          <button onClick={() => updateQuantity(item.id, -1)} className="flex-1 flex items-center justify-center hover:bg-secondary transition-colors"><Minus size={12} /></button>
+                          <span className="flex-1 flex items-center justify-center text-xs font-medium border-x border-border">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, 1)} className="flex-1 flex items-center justify-center hover:bg-secondary transition-colors"><Plus size={12} /></button>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-primary">{formatPrice(item.price * item.quantity)}</p>
+                        {item.quantity > 1 && <p className="text-[10px] text-muted-foreground">{formatPrice(item.price)} c/u</p>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {cart.length > 0 && (
+            <SheetFooter className="p-6 border-t border-border bg-white mt-auto block">
+              <div className="space-y-4">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm font-light uppercase tracking-widest text-muted-foreground">Subtotal</span>
+                  <span className="text-xl font-medium text-foreground">{formatPrice(cartTotal)}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground italic leading-relaxed">Impuestos y envío calculados en consulta. Todos los precios son orientativos de la colección actual.</p>
+                <div className="grid grid-cols-1 gap-3 pt-2">
+                  <button onClick={handleCheckout} className="w-full bg-black text-white py-3.5 px-4 rounded-md font-semibold text-sm uppercase tracking-widest hover:bg-black/80 transition-all flex items-center justify-center gap-2 group">
+                    Proceder al Pago <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                  <div className="flex items-center justify-center gap-3 py-1">
+                    <div className="flex items-center gap-1 text-emerald-600">
+                      <Lock size={11} />
+                      <span className="text-[10px] font-semibold">Pago Seguro SSL</span>
+                    </div>
+                    <span className="text-border">·</span>
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Shield size={11} />
+                      <span className="text-[10px]">Garantía 2 años</span>
+                    </div>
+                    <span className="text-border">·</span>
+                    <span className="text-[10px] text-muted-foreground">30 días devolución</span>
+                  </div>
+                  <button onClick={() => setOpen(false)} className="w-full bg-transparent text-muted-foreground py-2 text-xs font-medium hover:text-foreground transition-colors">Continuar Comprando</button>
+                </div>
+              </div>
+            </SheetFooter>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <CheckoutModal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} cart={cart} cartTotal={cartTotal} onSuccess={() => { clearCart(); setCheckoutOpen(false); }} />
+    </>
+  );
+}
