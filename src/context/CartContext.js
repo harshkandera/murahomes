@@ -6,6 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 
 const CartContext = createContext(undefined);
 
+const GUEST_CART_KEY = 'santiago-cart-guest';
+
 export function CartProvider({ children }) {
   const { isLoaded, isSignedIn, user } = useAuth();
   const [cart, setCart] = useState([]);
@@ -16,13 +18,7 @@ export function CartProvider({ children }) {
     if (!isLoaded) return;
     setIsAdmin(user?.role === 'ADMIN');
 
-    if (!isSignedIn) {
-      setCart([]);
-      setIsInitialized(true);
-      return;
-    }
-
-    const key = `santiago-cart-${user.id}`;
+    const key = isSignedIn && user ? `santiago-cart-${user.id}` : GUEST_CART_KEY;
     const saved = localStorage.getItem(key);
     if (saved) {
       try { setCart(JSON.parse(saved)); } catch { setCart([]); }
@@ -33,16 +29,12 @@ export function CartProvider({ children }) {
   }, [isLoaded, isSignedIn, user?.id]);
 
   useEffect(() => {
-    if (isInitialized && isSignedIn && user) {
-      localStorage.setItem(`santiago-cart-${user.id}`, JSON.stringify(cart));
-    }
+    if (!isInitialized) return;
+    const key = isSignedIn && user ? `santiago-cart-${user.id}` : GUEST_CART_KEY;
+    localStorage.setItem(key, JSON.stringify(cart));
   }, [cart, isInitialized, isSignedIn, user?.id]);
 
   const addToCart = (product) => {
-    if (!isSignedIn) {
-      toast.error('Please log in to add items to your cart.', { description: 'Your cart is tied to your account.' });
-      return;
-    }
     if (isAdmin) {
       toast.error('Admins cannot add items to cart.');
       return;
@@ -80,7 +72,8 @@ export function CartProvider({ children }) {
 
   const clearCart = () => {
     setCart([]);
-    if (user) localStorage.removeItem(`santiago-cart-${user.id}`);
+    const key = isSignedIn && user ? `santiago-cart-${user.id}` : GUEST_CART_KEY;
+    localStorage.removeItem(key);
   };
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);

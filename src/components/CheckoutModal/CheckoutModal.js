@@ -1,13 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { X, ArrowRight, RefreshCw, MapPin, Phone, User, Mail, Building2, Hash, CheckCircle2, ShoppingBag, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CheckoutModal({ open, onClose, cart, cartTotal, onSuccess }) {
-  const { user } = useAuth();
-
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -16,6 +13,7 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
     city: '',
     state: '',
     pinCode: '',
+    password: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderRef, setOrderRef] = useState(null);
@@ -23,16 +21,9 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
   useEffect(() => {
     if (open) {
       setOrderRef(null);
-      if (user) {
-        setForm(prev => ({
-          ...prev,
-          name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-          email: user.email || '',
-          phone: user.phone || '',
-        }));
-      }
+      setForm({ name: '', email: '', phone: '', address: '', city: '', state: '', pinCode: '', password: '' });
     }
-  }, [open, user]);
+  }, [open]);
 
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -40,7 +31,7 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.address || !form.state || !form.pinCode) {
+    if (!form.name || !form.email || !form.address || !form.state || !form.pinCode || !form.password) {
       toast.error('Por favor, completa todos los campos requeridos.');
       return;
     }
@@ -94,18 +85,18 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
                 <CheckCircle2 size={48} className="text-emerald-500" strokeWidth={1.5} />
               </div>
             </div>
-            <div className="space-y-2">
-              <h2 className="font-serif text-3xl font-medium text-foreground">¡Tu Solicitud Ha Sido Enviada!</h2>
-              <p className="text-muted-foreground text-sm max-w-sm leading-relaxed">
-                Nuestro equipo revisará tu pedido y te enviará una factura en 24 horas.
+            <div className="space-y-4 max-w-md">
+              <h2 className="font-serif text-2xl font-medium text-foreground">Confirmamos que tu pedido ya está con nosotros.</h2>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Muchas gracias por confiar en Mura Homes para formar parte de tu hogar. En breve, recibirás un correo electrónico con todos los detalles de tu compra y los pasos a seguir para realizar el pago.
+              </p>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Estamos a tu disposición para cualquier duda.
               </p>
             </div>
             <div className="px-5 py-3 bg-secondary/40 rounded-lg text-xs font-mono text-muted-foreground tracking-widest">
               REF: {orderRef}
             </div>
-            <p className="text-[11px] text-muted-foreground italic">
-              Se ha enviado una confirmación a <span className="font-medium text-foreground">{form.email}</span>
-            </p>
             <button
               onClick={handleBackToShopping}
               className="flex items-center gap-2 mt-4 bg-black text-white px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] hover:bg-black/80 transition-all"
@@ -118,7 +109,7 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
         {/* Header */}
         <div className="sticky top-0 bg-black text-white px-8 py-6 flex items-center justify-between z-10">
           <div>
-            <h2 className="font-serif text-2xl font-medium">Completar Tu Solicitud</h2>
+            <h2 className="font-serif text-2xl font-medium">Completar Tu Pedido</h2>
             <p className="text-white/50 text-xs uppercase tracking-widest mt-1">Datos de Entrega y Contacto</p>
           </div>
           <button
@@ -183,7 +174,7 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
                     placeholder="tu@ejemplo.com"
                   />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5">
                     Número de Teléfono
                   </label>
@@ -196,6 +187,23 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
                       onChange={handleChange}
                       className="w-full h-11 pl-9 pr-3 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black/20 focus:border-black transition-all bg-white"
                       placeholder="+34 600 000 000"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5">
+                    Contraseña <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      name="password"
+                      type="password"
+                      value={form.password}
+                      onChange={handleChange}
+                      required
+                      className="w-full h-11 pl-9 pr-3 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black/20 focus:border-black transition-all bg-white"
+                      placeholder="Crea una contraseña"
                     />
                   </div>
                 </div>
@@ -271,7 +279,7 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
             </div>
 
             <p className="text-[11px] text-muted-foreground italic">
-              * Todos los precios son orientativos. Un consultor de MuraHomes se pondrá en contacto contigo en 24 horas para confirmar disponibilidad y finalizar tu pedido.
+              * Se creará una cuenta con tu email para que puedas hacer seguimiento de tu pedido.
             </p>
 
             <button
@@ -282,7 +290,7 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
               {isSubmitting ? (
                 <><RefreshCw size={16} className="animate-spin" /> Procesando...</>
               ) : (
-                <><Lock size={14} /> Enviar Pedido Seguro <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" /></>
+                <><Lock size={14} /> Confirmar Pedido <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" /></>
               )}
             </button>
 

@@ -3,20 +3,16 @@
 import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { useCart } from "@/context/CartContext";
-import { useAuth } from "@/context/AuthContext";
-import { Trash, ShoppingBag, X, ArrowRight, Minus, Plus, Lock, Shield } from "lucide-react";
-import { toast } from 'sonner';
+import { ShoppingBag, X, ArrowRight, Minus, Plus, Lock, Shield } from "lucide-react";
 import CheckoutModal from '@/components/CheckoutModal/CheckoutModal';
 
 export default function CartDrawer({ open, setOpen }) {
   const { cart, removeFromCart, updateQuantity, cartTotal, cartCount, clearCart } = useCart();
-  const { isSignedIn } = useAuth();
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const formatPrice = (price) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(price);
 
   const handleCheckout = () => {
-    if (!isSignedIn) { toast.error('Inicia sesión para realizar un pedido.'); return; }
     if (cart.length === 0) return;
     setOpen(false);
     setCheckoutOpen(true);

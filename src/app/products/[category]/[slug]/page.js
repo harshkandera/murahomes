@@ -146,7 +146,7 @@ export default function ProductPageClient({ params }) {
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-4 mb-12">
               <Button size="lg" className="flex-1 py-6 text-sm uppercase tracking-widest" onClick={handleAddToCart}>
-                Consultar sobre esta Pieza
+                Añadir a mi cesta
               </Button>
             </div>
 
