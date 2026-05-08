@@ -2,12 +2,31 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/adminAuth';
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const products = await prisma.product.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
-    return NextResponse.json(products);
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search') || '';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '12', 10)));
+    const skip = (page - 1) * limit;
+
+    const where = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { brand: { contains: search, mode: 'insensitive' } },
+            { category: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      prisma.product.count({ where }),
+    ]);
+
+    return NextResponse.json({ products, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     console.error('Failed to fetch products:', error);
     return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });

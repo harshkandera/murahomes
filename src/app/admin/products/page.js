@@ -35,9 +35,9 @@ export default function AdminProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/products');
+      const res = await fetch('/api/products?limit=1000');
       if (!res.ok) throw new Error('Failed to fetch collection');
-      const data = await res.json();
+      const { products: data } = await res.json();
       setProducts(data);
     } catch (error) {
       toast.error('Error loading luxury collection');

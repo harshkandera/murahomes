@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from "sonner";
 import { RefreshCw, Shield, Truck, Wrench } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { event } from '@/lib/pixel';
 import {
   Accordion,
   AccordionContent,
@@ -40,9 +41,9 @@ export default function ProductPageClient({ params }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/products');
+        const res = await fetch('/api/products?limit=1000');
         if (!res.ok) throw new Error('Failed to fetch');
-        const allProducts = await res.json();
+        const { products: allProducts } = await res.json();
 
         const found = allProducts.find(p => p.slug === slug);
         if (!found) return;
@@ -51,6 +52,13 @@ export default function ProductPageClient({ params }) {
         setRelatedProducts(
           allProducts.filter(p => p.category === category && p.id !== found.id).slice(0, 3)
         );
+        event('ViewContent', {
+          content_ids: [found.id],
+          content_name: found.name,
+          content_category: found.category,
+          value: found.price,
+          currency: 'EUR',
+        });
       } catch (error) {
         console.error('Failed to load product:', error);
       } finally {
@@ -66,6 +74,13 @@ export default function ProductPageClient({ params }) {
 
   const handleAddToCart = () => {
     addToCart(product);
+    event('AddToCart', {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_category: product.category,
+      value: product.price,
+      currency: 'EUR',
+    });
   };
 
   if (loading) {

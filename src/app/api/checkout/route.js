@@ -16,6 +16,7 @@ export async function POST(request) {
 
     // Create user account if it doesn't already exist
     const existingUser = await prisma.user.findUnique({ where: { email } });
+    let accountCreated = false;
     if (!existingUser) {
       const hashedPassword = await bcrypt.hash(password, 10);
       const nameParts = (name || '').trim().split(' ');
@@ -29,6 +30,7 @@ export async function POST(request) {
           role: 'USER',
         },
       });
+      accountCreated = true;
     }
 
     const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -50,7 +52,7 @@ export async function POST(request) {
 
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
       console.warn('Email credentials missing. Consultation saved but email skipped.');
-      return NextResponse.json({ success: true, inquiryId: savedInquiry.id });
+      return NextResponse.json({ success: true, inquiryId: savedInquiry.id, accountCreated });
     }
 
     const emailPort = parseInt(process.env.EMAIL_PORT || '465', 10);
@@ -117,7 +119,7 @@ export async function POST(request) {
       html: emailHtml,
     });
 
-    return NextResponse.json({ success: true, message: 'Order placed and confirmation sent.', inquiryId: savedInquiry.id });
+    return NextResponse.json({ success: true, message: 'Order placed and confirmation sent.', inquiryId: savedInquiry.id, accountCreated });
   } catch (error) {
     console.error('Checkout Error:', error);
     return NextResponse.json({ error: 'System error during checkout' }, { status: 500 });

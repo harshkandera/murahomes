@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, ArrowRight, RefreshCw, MapPin, Phone, User, Mail, Building2, Hash, CheckCircle2, ShoppingBag, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { event } from '@/lib/pixel';
 
 export default function CheckoutModal({ open, onClose, cart, cartTotal, onSuccess }) {
   const [form, setForm] = useState({
@@ -22,6 +23,7 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
     if (open) {
       setOrderRef(null);
       setForm({ name: '', email: '', phone: '', address: '', city: '', state: '', pinCode: '', password: '' });
+      event('InitiateCheckout', { value: cartTotal, currency: 'EUR', num_items: cart.length });
     }
   }, [open]);
 
@@ -49,6 +51,17 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
 
       const ref = data.inquiryId || data.id || data.consultationId;
       setOrderRef(ref ? ref.slice(-8).toUpperCase() : 'ORD-' + Date.now().toString(36).toUpperCase());
+
+      event('Purchase', {
+        value: cartTotal,
+        currency: 'EUR',
+        content_ids: cart.map(i => i.id),
+        num_items: cart.length,
+      });
+      if (data.accountCreated) {
+        event('CompleteRegistration', { status: true });
+      }
+
       onSuccess?.();
     } catch (err) {
       toast.error('Error al enviar el pedido', { description: err.message });

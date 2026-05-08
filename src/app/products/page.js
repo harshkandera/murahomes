@@ -1,10 +1,9 @@
 import SectionHeading from '@/components/SectionHeading/SectionHeading';
 import CategoryCard from '@/components/CategoryCard/CategoryCard';
-import ProductCard from '@/components/ProductCard/ProductCard';
+import ProductsGrid from '@/components/ProductsGrid/ProductsGrid';
 import { categories } from '@/data/products';
 import Link from 'next/link';
-import prisma from '@/lib/prisma';
-import { ArrowRight, SlidersHorizontal, Package } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export const metadata = {
   title: 'Nuestros Productos | MuraHomes',
@@ -12,10 +11,6 @@ export const metadata = {
 };
 
 export default async function ProductsPage() {
-  const products = await prisma.product.findMany({
-    take: 12,
-    orderBy: { createdAt: 'desc' },
-  });
 
   return (
     <>
@@ -90,34 +85,11 @@ export default async function ProductsPage() {
       {/* ── ALL PRODUCTS ────────────────────────────────────────── */}
       <section id="products" className="py-20 bg-[#f9f7f4]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <div className="flex items-end justify-between mb-10">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground block mb-2">El Catálogo Completo</span>
-              <h2 className="font-serif text-3xl font-semibold">Todos los <span className="text-amber-500">Productos</span></h2>
-            </div>
-            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-              <SlidersHorizontal size={14} />
-              <span className="uppercase tracking-wider font-semibold">{products.length} artículos</span>
-            </div>
+          <div className="mb-10">
+            <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground block mb-2">El Catálogo Completo</span>
+            <h2 className="font-serif text-3xl font-semibold">Todos los <span className="text-amber-500">Productos</span></h2>
           </div>
-
-          {products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-32 text-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-secondary/50 flex items-center justify-center">
-                <Package size={28} className="text-muted-foreground/40" />
-              </div>
-              <p className="text-muted-foreground italic">Los productos aparecerán aquí una vez añadidos desde el panel de administración.</p>
-              <Link href="/admin/products/new" className="text-xs font-bold uppercase tracking-widest text-black border-b border-black/20 hover:border-black transition-all">
-                Añadir Productos →
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
+          <ProductsGrid />
         </div>
       </section>
 

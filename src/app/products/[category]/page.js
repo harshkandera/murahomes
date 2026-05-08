@@ -12,6 +12,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import CategoryPixelTracker from '@/components/CategoryPixelTracker/CategoryPixelTracker';
 
 export async function generateMetadata({ params }) {
   const { category } = await params;
@@ -40,6 +41,7 @@ export default async function CategoryPage({ params }) {
 
   return (
     <>
+      <CategoryPixelTracker categoryName={categoryData.name} />
       <div className="relative pt-32 pb-24 bg-secondary/30">
         <div className="container mx-auto px-4 lg:px-8">
           <Breadcrumb className="mb-8">

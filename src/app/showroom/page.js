@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { ArrowRight, MapPin, Clock, Phone, Mail, Calendar } from 'lucide-react';
+import { event } from '@/lib/pixel';
 
 const hours = [
   { day: 'Lunes – Viernes', time: '10:00 – 20:00' },
@@ -36,6 +37,7 @@ export default function ShowroomPage() {
         }),
       });
       if (!res.ok) throw new Error('Failed to submit');
+      event('Lead', { content_name: 'Showroom Appointment' });
       toast.success('Solicitud de Cita Enviada', {
         description: 'Nuestro equipo de diseño se pondrá en contacto contigo pronto para confirmar tu visita.',
       });

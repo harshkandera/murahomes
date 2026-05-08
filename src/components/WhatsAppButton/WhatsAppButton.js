@@ -1,5 +1,7 @@
 'use client';
 
+import { event } from '@/lib/pixel';
+
 const WA_NUMBER = '34627080811';
 const WA_URL = `https://wa.me/${WA_NUMBER}?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20sus%20productos.`;
 
@@ -10,6 +12,7 @@ export default function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Contactar por WhatsApp"
+      onClick={() => event('Contact', { content_name: 'WhatsApp' })}
       className="fixed bottom-6 right-6 z-[999] flex items-center gap-2.5 bg-[#25D366] text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group"
     >
       {/* Label bubble — visible on hover */}
