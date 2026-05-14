@@ -8,18 +8,28 @@ import LayoutShell from "@/components/LayoutShell/LayoutShell";
 import WhatsAppButton from "@/components/WhatsAppButton/WhatsAppButton";
 import { getSession } from "@/lib/auth";
 import Script from "next/script";
-
-const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-sans", weight: ["300", "400", "500", "600"] });
-const cormorant = Cormorant_Garamond({ subsets: ["latin"], variable: "--font-serif", weight: ["300", "400", "500", "600"], style: ["normal", "italic"] });
+import { Analytics } from "@vercel/analytics/next";
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["300", "400", "500", "600"],
+});
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  weight: ["300", "400", "500", "600"],
+  style: ["normal", "italic"],
+});
 
 export const metadata = {
   title: "MuraHomes | Muebles de Lujo y Diseño de Interiores",
-  description: "Curadores de muebles mediterráneos excepcionales y diseño de interiores atemporal.",
+  description:
+    "Curadores de muebles mediterráneos excepcionales y diseño de interiores atemporal.",
 };
 
 export default async function RootLayout({ children }) {
   const session = await getSession();
-  const dbRole = session?.role || 'USER';
+  const dbRole = session?.role || "USER";
   const serverUserId = session?.userId || null;
 
   return (
@@ -42,12 +52,21 @@ export default async function RootLayout({ children }) {
           }}
         />
       </head>
-      <body suppressHydrationWarning className={`${dmSans.variable} ${cormorant.variable} antialiased selection:bg-primary selection:text-white`}>
+      <body
+        suppressHydrationWarning
+        className={`${dmSans.variable} ${cormorant.variable} antialiased selection:bg-primary selection:text-white`}
+      >
         <AuthProvider>
           <CartProvider>
-            <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem
+              disableTransitionOnChange
+            >
               <LayoutShell dbRole={dbRole} serverUserId={serverUserId}>
                 {children}
+                <Analytics />
               </LayoutShell>
               <WhatsAppButton />
               <Toaster position="bottom-right" richColors />
