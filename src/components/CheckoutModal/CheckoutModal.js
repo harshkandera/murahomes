@@ -99,12 +99,9 @@ export default function CheckoutModal({ open, onClose, cart, cartTotal, onSucces
               </div>
             </div>
             <div className="space-y-4 max-w-md">
-              <h2 className="font-serif text-2xl font-medium text-foreground">Confirmamos que tu pedido ya está con nosotros.</h2>
+              <h2 className="font-serif text-2xl font-medium text-foreground">¡Pedido recibido!</h2>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Muchas gracias por confiar en Mura Homes para formar parte de tu hogar. En breve, recibirás un correo electrónico con todos los detalles de tu compra y los pasos a seguir para realizar el pago.
-              </p>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Estamos a tu disposición para cualquier duda.
+                Gracias por tu pedido, recibirás un correo electrónico de confirmación en breve.
               </p>
             </div>
             <div className="px-5 py-3 bg-secondary/40 rounded-lg text-xs font-mono text-muted-foreground tracking-widest">

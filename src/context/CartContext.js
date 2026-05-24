@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
+import { event } from '@/lib/pixel';
 
 const CartContext = createContext(undefined);
 
@@ -46,6 +47,7 @@ export function CartProvider({ children }) {
         return prev.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       }
       toast.success(`${product.name} added to cart`);
+      event('AddToCart', { content_ids: [product.id], content_name: product.name, value: product.price, currency: 'EUR' });
       return [...prev, { ...product, quantity: 1, status: 'in-cart' }];
     });
   };
